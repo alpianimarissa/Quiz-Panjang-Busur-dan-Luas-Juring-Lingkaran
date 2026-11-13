@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoMaster 2D - Kuis Panjang Busur & Luas Juring Kelas 9</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Plus Jakarta Sans -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f4f6fb;
+            color: #1e293b;
+        }
+        .btn-nav-num {
+            transition: all 0.2s ease;
+        }
+        .btn-nav-num:hover {
+            transform: translateY(-1px);
+        }
+        .btn-option {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-option:hover:not(:disabled) {
+            border-color: #6366f1;
+            background-color: #f8fafc;
+        }
+        /* Grid background pattern for geometry display */
+        .geo-canvas-bg {
+            background-color: #181832;
+            background-image: 
+                radial-gradient(rgba(99, 102, 241, 0.15) 1px, transparent 1px),
+                radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
+        }
+        /* Custom fraction vertical */
+        .fraction {
+            display: inline-flex;
+            flex-direction: column;
+            vertical-align: middle;
+            text-align: center;
+            padding: 0 4px;
+            font-weight: 600;
+        }
+        .fraction .numerator {
+            border-bottom: 2px solid currentColor;
+            padding-bottom: 2px;
+            line-height: 1;
+        }
+        .fraction .denominator {
+            padding-top: 2px;
+            line-height: 1;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-indigo-500 selection:text-white">
+
+    <!-- Clean Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-3">
+            
+            <!-- Logo & Title -->
+            <div class="flex items-center space-x-3.5">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/30 shrink-0">
+                    <i class="fa-solid fa-chart-pie text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-slate-900 text-base sm:text-xl leading-tight">GeoMaster 2D</h1>
+                    <p class="text-[11px] sm:text-xs font-semibold text-slate-500">Panjang Busur & Luas Juring • Kelas 9 SMP</p>
+                </div>
+            </div>
+
+            <!-- Score Badge, Auto-Save Indicator & Progress Right -->
+            <div class="flex items-center gap-3 sm:gap-5">
+                <!-- Auto-Save Badge -->
+                <div id="autosave-badge" class="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-xl text-[11px] font-bold text-emerald-700">
+                    <i class="fa-solid fa-cloud-check text-emerald-600"></i>
+                    <span>Tersimpan Otomatis</span>
+                </div>
+
+                <!-- Score Pill -->
+                <div class="px-3.5 py-2 bg-indigo-50 border border-indigo-100 rounded-xl flex items-center gap-2 shadow-xs">
+                    <span class="text-[11px] sm:text-xs font-bold text-indigo-700 tracking-wider">SKOR:</span>
+                    <span id="top-score-text" class="text-sm sm:text-base font-extrabold text-indigo-600">0 / 20</span>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="hidden sm:flex items-center gap-3">
+                    <span class="text-xs font-bold text-slate-500">Progress</span>
+                    <div class="w-32 lg:w-36 h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                        <div id="top-progress-bar" class="h-full bg-indigo-600 rounded-full transition-all duration-300" style="width: 0%;"></div>
+                    </div>
+                    <span id="top-progress-percent" class="text-xs font-bold text-slate-700 w-9">0%</span>
+                </div>
+            </div>
+
+        </div>
+    </header>
+
+    <!-- Main Content Layout (3 Columns) -->
+    <main class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-grow">
+        
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            <!-- LEFT COLUMN: Navigation Sidebar (3 Cols) -->
+            <aside class="lg:col-span-3 bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-5">
+                
+                <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <h2 class="font-bold text-slate-900 text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-bars-staggered text-indigo-600"></i> Navigasi Soal
+                    </h2>
+                    <button onclick="confirmReset()" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg text-xs font-bold transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-rotate-right text-xs"></i> Reset
+                    </button>
+                </div>
+
+                <!-- Status Legend -->
+                <div class="flex items-center justify-between px-2 text-[11px] font-semibold text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-slate-300"></span>
+                        <span>Belum</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                        <span>Benar</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                        <span>Salah</span>
+                    </div>
+                </div>
+
+                <!-- Question Numbers Grid (1-20) -->
+                <div id="nav-grid-buttons" class="grid grid-cols-5 gap-2.5 pt-1">
+                    <!-- Generated dynamically by JavaScript -->
+                </div>
+
+                <!-- Summary Stats Box -->
+                <div class="pt-3 border-t border-slate-100 space-y-2 text-xs">
+                    <div class="flex justify-between text-slate-600 font-semibold">
+                        <span>Terjawab:</span>
+                        <span id="stat-answered" class="font-bold text-slate-900">0 / 20 Soal</span>
+                    </div>
+                    <div class="flex justify-between text-emerald-600 font-semibold">
+                        <span>Jawaban Benar:</span>
+                        <span id="stat-correct" class="font-bold">0 Soal</span>
+                    </div>
+                    <div class="flex justify-between text-rose-600 font-semibold">
+                        <span>Jawaban Salah:</span>
+                        <span id="stat-wrong" class="font-bold">0 Soal</span>
+                    </div>
+                </div>
+
+            </aside>
+
+            <!-- CENTER COLUMN: Geometric Visualization Canvas (4 Cols) -->
+            <section class="lg:col-span-4 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full min-h-[380px] lg:min-h-[560px]">
+                
+                <!-- Canvas Top Bar -->
+                <div class="geo-canvas-bg px-5 py-4 flex items-center justify-between border-b border-slate-800">
+                    <span id="canvas-badge" class="px-3 py-1 rounded-full bg-indigo-600/90 text-white font-bold text-xs uppercase tracking-wider shadow-sm">
+                        PANJANG BUSUR
+                    </span>
+                    <span class="px-3 py-1 rounded-full bg-slate-800/80 text-indigo-300 border border-indigo-500/30 text-xs font-semibold">
+                        Ilustrasi Geometri
+                    </span>
+                </div>
+
+                <!-- Geometric SVG Display Container -->
+                <div class="geo-canvas-bg flex-grow flex items-center justify-center p-6 relative overflow-hidden">
+                    <div id="svg-geometry-container" class="w-full h-full flex items-center justify-center">
+                        <!-- Dynamic SVG Diagram -->
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- RIGHT COLUMN: Question & Options (5 Cols) -->
+            <section class="lg:col-span-5 space-y-4">
+                
+                <div id="question-box-card" class="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200 shadow-sm min-h-[460px] lg:min-h-[500px] flex flex-col justify-between">
+                    
+                    <!-- Top Info Line -->
+                    <div>
+                        <div class="flex justify-between items-center pb-4 mb-4 border-b border-slate-100">
+                            <span id="question-no-tag" class="text-xs font-extrabold text-indigo-600 tracking-wider uppercase">SOAL 1 DARI 20</span>
+                            <button onclick="toggleHintModal()" class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-lightbulb text-amber-500"></i> Rumus Busur & Juring
+                            </button>
+                        </div>
+
+                        <!-- Question Text -->
+                        <h2 id="question-text" class="text-base sm:text-lg font-bold text-slate-900 leading-snug mb-6">
+                            <!-- Question text injected here -->
+                        </h2>
+
+                        <!-- Options List -->
+                        <div id="options-container" class="space-y-3">
+                            <!-- Options injected here -->
+                        </div>
+                    </div>
+
+                    <!-- Bottom Explanation Box if Answered -->
+                    <div id="explanation-box" class="hidden mt-5">
+                        <!-- Dynamic feedback -->
+                    </div>
+
+                </div>
+
+                <!-- Footer Navigation Buttons -->
+                <div class="flex justify-between items-center pt-1">
+                    <button id="btn-prev-question" onclick="navigate(-1)" class="px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-xs disabled:opacity-40 disabled:cursor-not-allowed">
+                        <i class="fa-solid fa-arrow-left"></i> Sebelumnya
+                    </button>
+                    
+                    <span id="bottom-counter" class="text-xs font-bold text-slate-400 uppercase">1 / 20</span>
+
+                    <button id="btn-next-question" onclick="navigate(1)" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-md shadow-indigo-600/20 disabled:opacity-40 disabled:cursor-not-allowed">
+                        Berikutnya <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+
+            </section>
+
+        </div>
+
+    </main>
+
+    <!-- HINT RUMUS MODAL -->
+    <div id="hint-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 max-w-md w-full space-y-4 shadow-xl">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-lightbulb text-amber-500"></i> Petunjuk Rumus Kelas 9
+                </h3>
+                <button onclick="toggleHintModal()" class="text-slate-400 hover:text-slate-600 font-bold text-xl leading-none">&times;</button>
+            </div>
+            
+            <div class="space-y-3 text-xs text-slate-700">
+                <div class="p-3 bg-amber-50/70 rounded-xl border border-amber-200">
+                    <p class="font-bold text-amber-900 mb-1">1. Panjang Busur (AB)</p>
+                    <div class="flex items-center gap-1.5">
+                        <span>Panjang Busur = (</span>
+                        <div class="fraction">
+                            <span class="numerator">&alpha;</span>
+                            <span class="denominator">360°</span>
+                        </div>
+                        <span>) × 2 × &pi; × r</span>
+                    </div>
+                </div>
+                <div class="p-3 bg-indigo-50/70 rounded-xl border border-indigo-200">
+                    <p class="font-bold text-indigo-900 mb-1">2. Luas Juring (AOB)</p>
+                    <div class="flex items-center gap-1.5">
+                        <span>Luas Juring = (</span>
+                        <div class="fraction">
+                            <span class="numerator">&alpha;</span>
+                            <span class="denominator">360°</span>
+                        </div>
+                        <span>) × &pi; × r²</span>
+                    </div>
+                </div>
+                <div class="p-3 bg-emerald-50/70 rounded-xl border border-emerald-200">
+                    <p class="font-bold text-emerald-900 mb-1">3. Hubungan Sudut, Busur & Juring</p>
+                    <div class="flex items-center gap-2 pt-1">
+                        <div class="fraction">
+                            <span class="numerator">Sudut Pusat</span>
+                            <span class="denominator">360°</span>
+                        </div>
+                        <span>=</span>
+                        <div class="fraction">
+                            <span class="numerator">Panjang Busur</span>
+                            <span class="denominator">Keliling Lingkaran</span>
+                        </div>
+                        <span>=</span>
+                        <div class="fraction">
+                            <span class="numerator">Luas Juring</span>
+                            <span class="denominator">Luas Lingkaran</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <p class="font-bold text-slate-800 mb-0.5">4. Hubungan Langsung Busur & Juring</p>
+                    <p>Luas Juring = <span class="font-bold">½ × Panjang Busur × r</span></p>
+                </div>
+            </div>
+
+            <button onclick="toggleHintModal()" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition">
+                Tutup Petunjuk
+            </button>
+        </div>
+    </div>
+
+    <!-- RESET MODAL -->
+    <div id="reset-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 max-w-sm w-full space-y-4 text-center shadow-xl">
+            <div class="w-12 h-12 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto text-xl border border-rose-100">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 class="text-base font-bold text-slate-900">Reset Semua Jawaban?</h3>
+            <p class="text-xs text-slate-500 leading-relaxed">Seluruh jawaban dan skor yang sudah tersimpan akan dihapus dan kuis kembali dari awal.</p>
+            <div class="flex gap-3 pt-2">
+                <button onclick="closeResetModal()" class="w-1/2 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition">Batal</button>
+                <button onclick="executeReset()" class="w-1/2 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs transition shadow-md shadow-rose-600/20">Ya, Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- COMPLETION MODAL -->
+    <div id="finish-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 max-w-sm w-full space-y-4 text-center shadow-xl">
+            <div class="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto text-2xl border border-indigo-100">
+                <i class="fa-solid fa-trophy"></i>
+            </div>
+            <h3 class="text-lg font-extrabold text-slate-900">Kuis Selesai!</h3>
+            <p class="text-xs text-slate-500 leading-relaxed">Kamu telah menjawab seluruh 20 soal Panjang Busur & Luas Juring.</p>
+            <div class="p-4 bg-indigo-50/70 rounded-xl border border-indigo-100">
+                <span class="text-xs font-bold text-indigo-700 uppercase block mb-1">Nilai Akhir Kamu</span>
+                <span id="final-grade-text" class="text-3xl font-extrabold text-indigo-600">100</span>
+                <span id="final-detail-text" class="block text-xs font-semibold text-slate-600 mt-1">Benar 20 dari 20 soal</span>
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button onclick="closeFinishModal()" class="w-1/2 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition">Lihat Pembahasan</button>
+                <button onclick="closeFinishModal(); confirmReset();" class="w-1/2 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition shadow-md shadow-indigo-600/20">Ulangi Kuis</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Data & Logic -->
+    <script>
+        /**
+         * Bank 20 Soal Panjang Busur & Luas Juring Kelas 9 SMP
+         * Distribusi Kunci Jawaban Seimbang (5 A, 5 B, 5 C, 5 D) dan Acak:
+         * 1: C | 2: A | 3: D | 4: B | 5: C
+         * 6: D | 7: A | 8: B | 9: D | 10: A
+         * 11: C | 12: B | 13: A | 14: D | 15: B
+         * 16: C | 17: D | 18: A | 19: B | 20: C
+         * Total: A = 5, B = 5, C = 5, D = 5
+         */
+        const questions = [
+            {
+                id: 1,
+                topic: "PANJANG BUSUR",
+                question: "Sebuah lingkaran memiliki jari-jari r = 21 cm. Jika sudut pusat AOB = 60°, berapakah panjang busur AB? (π = 22/7)",
+                options: ["11 cm", "18 cm", "22 cm", "44 cm"],
+                answer: 2, // C
+                explanation: "Panjang Busur AB = (60° / 360°) × 2 × (22/7) × 21 = (1/6) × 132 = 22 cm.",
+                svg: `
+                    <svg width="240" height="240" viewBox="0 0 240 240">
+                        <circle cx="120" cy="120" r="80" fill="none" stroke="#334155" stroke-width="2" stroke-dasharray="4 4"/>
+                        <path d="M 200 120 A 80 80 0 0 0 160 50.7" fill="none" stroke="#fbbf24" stroke-width="5" stroke-linecap="round"/>
+                        <line x1="120" y1="120" x2="200" y2="120" stroke="#cbd5e1" stroke-width="2"/>
+                        <line x1="120" y1="120" x2="160" y2="50.7" stroke="#cbd5e1" stroke-width="2"/>
+                        <circle cx="120" cy="120" r="4" fill="#ffffff"/>
+                        <text x="105" y="125" fill="#ffffff" font-size="12" font-weight="bold">O</text>
+                        <text x="206" y="124" fill="#cbd5e1" font-size="12" font-weight="bold">A</text>
+                        <text x="162" y="42" fill="#cbd5e1" font-size="12" font-weight="bold">B</text>
+                        <text x="142" y="106" fill="#fbbf24" font-size="12" font-weight="bold">60°</text>
+                        <text x="155" y="136" fill="#94a3b8" font-size="11" font-weight="bold">r = 21 cm</text>
+                    </svg>
+                `
+            },
+            {
+                id: 2,
+                topic: "LUAS JURING",
+                question: "Diketahui sebuah juring lingkaran dengan sudut pusat 90° dan jari-jari 14 cm. Berapakah luas juring tersebut? (π = 22/7)",
+                options: ["154 cm²", "77 cm²", "308 cm²", "616 cm²"],
+                answer: 0, // A
+                explanation: "Luas Juring = (90° / 360°) × (22/7) × 14² = (1/4) × 616 = 154 cm².",
+                svg: `
+                    <svg width="240" height="240" viewBox="0 0 240 240">
+                        <circle cx="120" cy="120" r="80" fill="none" stroke="#334155" stroke-width="2" stroke-dasharray="3 3"/>
+                        <path d="M 120 120 L 200 120 A 80 80 0 0 0 120 40 Z" fill="rgba(168, 85, 247, 0.35)" stroke="#a855f7" stroke-width="3"/>
+                        <rect x="120" y="106" width="14" height="14" fill="none" stroke="#e9d5ff" stroke-width="1.5"/>
+                        <circle cx="120" cy="120" r="4" fill="#ffffff"/>
+                        <text x="142" y="96" fill="#ffffff" font-size="12" font-weight="bold">90°</text>
+                        <text x="160" y="136" fill="#e9d5ff" font-size="11" font-weight="bold">r = 14 cm</text>
+                    </svg>
+                `
+            },
+            {
+                id: 3,
+                topic: "PANJANG BUSUR",
+                question: "Panjang busur lingkaran dengan sudut pusat 72° dan jari-jari 10 cm adalah ... (Gunakan π = 3,14)",
+                options: ["6,28 cm", "9,42 cm", "15,7 cm", "12,56 cm"],
+                answer: 3, // D
+                explanation: "Panjang Busur = (72° / 360°) × 2 × 3,14 × 10 = (1/5) × 62,8 = 12,56 cm.",
+                svg: `
+                    <svg width="240" height="240" viewBox="0 0 240 240">
+                        <circle cx="120" cy="120" r="80" fill="none" stroke="#334155" stroke-width="2" stroke-dasharray="4 4"/>
+                        <path d="M 200 120 A 80 80 0 0 0 144.7 43.9" fill="none" stroke="#38bdf8" stroke-width="5" stroke-linecap="round"/>
+                        <line x1="120" y1="120" x2="200" y2="120" stroke="#cbd5e1" stroke-width="2"/>
+                        <line x1="120" y1="120" x2="144.7" y2="43.9" stroke="#cbd5e1" stroke-width="2"/>
+                        <circle cx="120" cy="120" r="4" fill="#ffffff"/>
+                        <text x="142" y="102" fill="#38bdf8" font-size="12" font-weight="bold">72°</text>
+                        <text x="158" y="136" fill="#94a3b8" font-size="11" font-weight="bold">r = 10 cm</text>
+                    </svg>
+                `
+            },
+            {
+                id: 4,
+                topic: "LUAS JURING",
+                question: "Pada lingkaran berjari-jari 21 cm, terdapat juring dengan sudut pusat 120°. Luas juring tersebut adalah ... (π = 22/7)",
+                options: ["231 cm²", "462 cm²", "308 cm²", "693 cm²"],
+                answer: 1, // B
+                explanation: "Luas Juring = (120° / 360°) × (22/7) × 21² = (1/3) × 1.386 = 462 cm².",
+                svg: `
+                    <svg width="240" height="240" viewBox="0 0 240 240">
+                        <circle cx="120" cy="120" r="78" fill="none" stroke="#334155" stroke-width="2" stroke-dasharray="3 3"/>
+                        <path d="M 120 120 L 198 120 A 78 78 0 0 0 81 52.5 Z" fill="rgba(236, 72, 153, 0.35)" stroke="#ec4899" stroke-width="3"/>
+                        <circle cx="120" cy="120" r="4" fill="#ffffff"/>
+                        <text x="128" y="95" fill="#ffffff" font-size="12" font-weight="bold">120°</text>
+                        <text x="155" y="136" fill="#fbcfe8" font-size="11" font-weight="bold">r = 21 cm</text>
+                    </svg>
+                `
+            },
+            {
+                id: 5,
+                topic: "MENCARI SUDUT PUSAT",
+                question: "Jika panjang busur PQ adalah 22 cm pada lingkaran yang berjari-jari 28 cm, berapakah besar sudut pusat POQ? (π = 22/7)",
+                options: ["30°", "60°", "45°", "90°"],
+                answer: 2, // C
+                explanation: "Keliling = 2 × (22/7) × 28 = 176 cm. Sudut = (22 / 176) × 360° = (1/8) × 360° = 45°.",
+                svg: `
+                    <svg width="240" height="240" viewBox="0 0 240 240">
+                        <circle cx="120" cy="120" r="80" fill="none" stroke="#334155" stroke-dasharray="4 4"/>
+                        <path d="M 200 120 A 80 80 0 0 0 176.5 63.4" fill="none" stroke="#10b981" stroke-width="5" stroke-linecap="round"/>
+                        <line x1="120" y1="120" x2="200" y2="120" stroke="#cbd5e1" stroke-width="2"/>
+                        <line x1="120" y1="120" x2="176.5" y2="63.4" stroke="#cbd5e1" stroke-width="2"/>
+                        <text x="145" y="109" fill="#10b981" font-size="12" font-weight="bold">&alpha; = ?</text>
+                        <text x="195" y="82" fill="#10b981" font-size="11" font-weight="bold">22 cm</text>
+                    </svg>
+                `
+            },
+            {
+                id: 6,
+                topic: "MENCARI JARI-JARI",
+                question: "Diketahui luas suatu juring lingkaran adalah 31,4 cm² dengan sudut pusat 36° dan π = 3,14. Berapakah panjang jari-jari lingkaran tersebut?",
+                options: ["5 cm", "8 cm", "12 cm", "10 cm"],
+                answer: 3, // D
+                explanation: "Luas Juring = (36° / 360°) × 3,14 × r² ⇒ 31,4 = (1/10) × 3,14 × r² ⇒ r² = 100 ⇒ r = 10 cm.",
+                svg: `
+                    <svg width="240" height="240" viewBox="0 0 240 240">
+                        <circle cx="120" cy="120" r="80" fill="none" stroke="#334155" stroke-dasharray="3 3"/>
+                        <path d="M 120 120 L 200 120 A 80 80 0 0 0 184.7 73 Z" fill="rgba(245, 158, 11, 0.35)" stroke="#f59e0b" stroke-width="2.5"/>
+                        <text x="152" y="109" fill="#ffffff" font-size="11" font-weight="bold">36°</text>
+                        <text x="155" y="136" fill="#fbbf24" font-size="12" font-weight="bold">r = ?</text>
+                    </svg>
+                `
+            },
+            {
+                id: 7,
+                topic: "PANJANG BUSUR",
+                question: "Sebuah lingkaran memiliki diameter 42 cm. Jika sudut pusat suatu busur adalah 150°, berapakah panjang busur tersebut? (π = 22/7)",
+                options: ["55 cm", "44 cm", "66 cm", "110 cm"],
+                answer: 0, // A
+                explanation: "Keliling = π × d = (22/7) × 42 = 132 cm. Panjang Busur = (150° / 360°) × 132 = (5/12) × 132 = 55 cm.",
+                svg: `
+                    <svg width="240" height="240" viewBox="0 0 240 240">
+                        <circle cx="120" cy="120" r="80" fill="none" stroke="#334155" stroke-dasharray="4 4"/>
+                        <path d="M 200 120 A 80 80 0 0 0 50.7 80" fill="none" stroke="#f43f5e" stroke-width="5" stroke-linecap="round"/>
+                        <line x1="120" y1="120" x2="200" y2="120" stroke="#cbd5e1" stroke-width="2"/>
+                        <line x1="120" y1="120" x2="50.7" y2="80" stroke="#cbd5e1" stroke-width="2"/>
+                        <text x="115" y="92" fill="#f43f5e" font-size="12" font-weight="bold">150°</text>
+                        <text x="120" y="218" fill="#cbd5e1" font-size="11" text-anchor="middle" font-weight="bold">Diameter d = 42 cm</text>
+                    </svg>
+                `
+            },
+            {
+                id: 8,
+                topic: "APLIKASI LUAS JURING",
+                question: "Sebuah pizza berbentuk lingkaran berdiameter 28 cm dipotong menjadi 8 bagian juring yang sama besar. Luas 1 potong pizza adalah ... (π = 22/7)",
+                options: ["38,5 cm²", "77 cm²", "154 cm²", "308 cm²"],
+                answer: 1, // B
+                explanation: "r = 28 / 2 = 14 cm. Luas 1 lingkaran = (22/7) × 14² = 616 cm². Luas 1 potong = 616 / 8 = 77 cm².",
+                svg: `
+                    <svg width="240" height="240" viewBox="0 0 240 240">
+                        <circle cx="120" cy="120" r="78" fill="none" stroke="#64748b" stroke-width="2"/>
+                        <path d="M 120 120 L 198 120 A 78 78 0 0 0 175 65 Z" fill="rgba(245, 158, 11, 0.45)" stroke="#f59e0b" stroke-width="2.5"/>
+                        <line x1="42" y1="120" x2="198" y2="120" stroke="#475569"/>
+                        <line x1="120" y1="42" x2="120" y2="198" stroke="#475569"/>
+                        <line x1="65" y1="65" x2="175" y2="175" stroke="#475569"/>
+                        <line x1="65" y1="175" x2="175" y2="65" stroke="#475569"/>
+                        <text x="120" y="218" fill="#fbbf24" font-size="11" text-anchor="middle" font-weight="bold">1/8 Bagian Pizza (d = 28 cm)</text>
+                    </svg>
+                `
+            },
+            {
+                id: 9,
+                topic: "MENCARI JARI-JARI",
+                question: "Suatu busur lingkaran memiliki panjang 44 cm dan sudut pusat 120°. Berapakah jari-jari lingkaran tersebut? (π = 22/7)",
+                options: ["7 cm", "14 cm", "28 cm", "21 cm"],
+                answer: 3, // D
+                explanation: "44 = (120° / 360°) × 2 × (22/7) × r ⇒ 44 = (1/3) × (44/7) × r ⇒ 1 = r / 21 ⇒ r = 21 cm.",
+                svg: `
+                    <svg width="240" height="240" viewBox="0 0 240 240">
+                        <circle cx="120" cy="120" r="78" fill="none" stroke="#334155" stroke-dasharray="4 4"/>
+                        <path d="M 198 120 A 78 78 0 0 0 81 52.5" fill="none" stroke="#818cf8" stroke-width="5" stroke-linecap="round"/>
+                        <line x1="120" y1="120" x2="198" y2="120" stroke="#cbd5e1" stroke-width="2"/>
+                        <line x1="120" y1="120" x2="81" y2="52.5" stroke="#cbd5e1" stroke-width="2"/>
+                        <text x="125" y="96" fill="#ffffff" font-size="12" font-weight="bold">120°</text>
+                        <text x="155" y="136" fill="#a5b4fc" font-size="12" font-weight="bold">r = ?</text>
+                    </svg>
+                `
+            },
+            {
+                id: 10,
+                topic: "LUAS JURING",
+                question: "Sebuah juring memiliki sudut pusat 40° dan jari-jari r = 21 cm. Berapakah luas juring tersebut? (π = 22/7)",
+                options: ["154 cm²", "77 cm²", "132 cm²", "308 cm²"],
+                answer: 0, // A
+                explanation: "Luas Juring = (40° / 360°) × (22/7) × 21² = (1/9) × 1.386 = 154 cm².",
+                svg: `
+                    <svg width="240" height="240" viewBox="0 0 240 240">
+                        <circle cx="120" cy="120" r="80" fill="none" stroke="#334155" stroke-dasharray="3 3"/>
+                        <path d="M 120 120 L 200 120 A 80 80 0 0 0 181.3 68.6 Z" fill="rgba(56, 189, 248, 0.35)" stroke="#38bdf8" stroke-width="3"/>
+                        <text x="152" y="109" fill="#ffffff" font-size="11" font-weight="bold">40°</text>
+                        <text x="155" y="136" fill="#7dd3fc" font-size="11" font-weight="bold">r = 21 cm</text>
+                    </svg>
+                `
+            },
+            {
+                id: 11,
+                topic: "HUBUNGAN BUSUR & JURING",
+                question: "Diketahui panjang busur sebuah juring adalah 16 cm dan jari-jari lingkarannya adalah 10 cm. Berapakah luas juring tersebut?",
+                options: ["160 cm²", "40 cm²", "80 cm²", "320 cm²"],
+                answer: 2, // C
+                explanation: "Gunakan rumus langsung: Luas Juring = ½ × Panjang Busur × r = ½ × 16 × 10 = 80 cm².",
+                svg: `
+                    <svg width="240" height="240" viewBox="0 0 240 240">
+                        <circle cx="120" cy="120" r="78" fill="none" stroke="#334155" stroke-dasharray="3 3"/>
+                        <path d="M 120 120 L 198 120 A 78 78 0 0 0 155 50 Z" fill="rgba(16, 185, 129, 0.3)" stroke="#10b981" stroke-width="3"/>
+                        <text x="192" y="75" fill="#10b981" font-size="11" font-weight="bold">Busur = 16 cm</text>
+                        <text x="155" y="136" fill="#cbd5e1" font-size="11" font-weight="bold">r = 10 cm</text>
+                    </svg>
+                `
+            },
+            {
+                id: 12,
+                topic: "PERBANDINGAN JURING",
+                question: "Pada sebuah lingkaran yang sama, luas juring AOB dengan sudut pusat 45° adalah 30 cm². Berapakah luas juring COD yang sudut pusatnya 135°?",
+                options: ["60 cm²", "90 cm²", "120 cm²", "150 cm²"],
+                answer: 1, // B
+                explanation: "Perbandingan Luas Juring = Perbandingan Sudut Pusat ⇒ (135° / 45°) × 30 cm² = 3 × 30 = 90 cm².",
+                svg: `
+                    <svg width="240" height="240" viewBox="0 0 240 240">
+                        <circle cx="120" cy="120" r="78" fill="none" stroke="#475569" stroke-width="2"/>
+                        <path d="M 120 120 L 198 120 A 78 78 0 0 0 175 65 Z" fill="rgba(99, 102, 241, 0.45)" stroke="#6366f1" stroke-width="2"/>
+                        <path d="M 120 120 L 65 65 A 78 78 0 0 0 120 198 Z" fill="rgba(244, 63, 94, 0.35)" stroke="#f43f5e" stroke-width="2"/>
+                        <text x="160" y="108" fill="#ffffff" font-size="10" font-weight="bold">45°</text>
+                        <text x="82" y="135" fill="#ffffff" font-size="11" font-weight="bold">135°</text>
+                    </svg>
+                `
+            },
+            {
+                id: 13,
+                topic: "KELILING JURING",
+                question: "Sebuah juring memiliki sudut pusat 90° dan jari-jari 14 cm. Berapakah KELILING juring tersebut seluruhnya? (π = 22/7)",
+                options: ["50 cm", "22 cm", "36 cm", "64 cm"],
+                answer: 0, // A
+                explanation: "Panjang Busur = (90°/360°) × 2 × (22/7) × 14 = 22 cm. Keliling Juring = Busur + 2r = 22 + 14 + 14 = 50 cm.",
+                svg: `
+                    <svg width="240" height="240" viewBox="0 0 240 240">
+                        <circle cx="120" cy="120" r="78" fill="none" stroke="#334155" stroke-dasharray="3 3"/>
+                        <path d="M 120 120 L 198 120 A 78 78 0 0 0 120 42 Z" fill="rgba(251, 191, 36, 0.2)" stroke="#fbbf24" stroke-width="4"/>
+                        <text x="155" y="136" fill="#ffffff" font-size="11" font-weight="bold">r = 14</text>
+                        <text x="90" y="85" fill="#ffffff" font-size="11" font-weight="bold">r = 14</text>
+                        <text x="180" y="65" fill="#fbbf24" font-size="11" font-weight="bold">Busur</text>
+                    </svg>
+                `
+            },
+            {
+                id: 14,
+                topic: "APLIKASI JARUM JAM",
+                question: "Panjang jarum menit sebuah jam dinding adalah 14 cm. Berapakah panjang lintasan busur yang ditempuh ujung jarum menit selama 15 menit? (π = 22/7)",
+                options: ["11 cm", "44 cm", "88 cm", "22 cm"],
+                answer: 3, // D
+                explanation: "15 menit = 15/60 = 1/4 putaran (90°). Panjang Busur = (1/4) × 2 × (22/7) × 14 = 22 cm.",
+                svg: `
+                    <svg width="240" height="240" viewBox="0 0 240 240">
+                        <circle cx="120" cy="120" r="80" fill="none" stroke="#64748b" stroke-width="3"/>
+                        <path d="M 120 40 A 80 80 0 0 1 200 120" fill="none" stroke="#38bdf8" stroke-width="5" stroke-linecap="round"/>
+                        <line x1="120" y1="120" x2="120" y2="45" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+                        <line x1="120" y1="120" x2="195" y2="120" stroke="#94a3b8" stroke-width="2" stroke-dasharray="3 3"/>
+                        <circle cx="120" cy="120" r="4" fill="#f43f5e"/>
+                        <text x="165" y="65" fill="#38bdf8" font-size="11" font-weight="bold">15 Menit</text>
+                    </svg>
+                `
+            },
+            {
+                id: 15,
+                topic: "MENCARI SUDUT PUSAT",
+                question: "Luas suatu juring lingkaran adalah 78,5 cm² dengan jari-jari 10 cm (π = 3,14). Besar sudut pusat juring tersebut adalah ...",
+                options: ["60°", "90°", "45°", "120°"],
+                answer: 1, // B
+                explanation: "Luas Lingkaran = 3,14 × 10² = 314 cm². Sudut = (78,5 / 314) × 360° = (1/4) × 360° = 90°.",
+                svg: `
+                    <svg width="240" height="240" viewBox="0 0 240 240">
+                        <circle cx="120" cy="120" r="78" fill="none" stroke="#334155" stroke-dasharray="3 3"/>
+                        <path d="M 120 120 L 198 120 A 78 78 0 0 0 120 42 Z" fill="rgba(99, 102, 241, 0.4)" stroke="#818cf8" stroke-width="3"/>
+                        <text x="138" y="96" fill="#ffffff" font-size="12" font-weight="bold">&alpha; = ?</text>
+                        <text x="155" y="136" fill="#cbd5e1" font-size="11" font-weight="bold">r = 10 cm</text>
+                    </svg>
+                `
+            },
+            {
+                id: 16,
+                topic: "APLIKASI LUAS JURING",
+                question: "Sebuah taman berbentuk setengah lingkaran memiliki diameter 20 meter. Berapakah luas taman tersebut? (π = 3,14)",
+                options: ["314 m²", "628 m²", "157 m²", "78,5 m²"],
+                answer: 2, // C
+                explanation: "r = 20 / 2 = 10 m. Sudut setengah lingkaran = 180°. Luas = (1/2) × 3,14 × 10² = 157 m².",
+                svg: `
+                    <svg width="240" height="240" viewBox="0 0 240 240">
+                        <path d="M 40 140 A 80 80 0 0 1 200 140 Z" fill="rgba(16, 185, 129, 0.35)" stroke="#10b981" stroke-width="3"/>
+                        <circle cx="120" cy="140" r="4" fill="#ffffff"/>
+                        <text x="120" y="160" fill="#cbd5e1" font-size="12" text-anchor="middle" font-weight="bold">d = 20 m (180°)</text>
+                    </svg>
+                `
+            },
+            {
+                id: 17,
+                topic: "PERBANDINGAN BUSUR",
+                question: "Pada lingkaran yang sama, panjang busur AB dengan sudut pusat 30° adalah 12 cm. Berapakah panjang busur CD jika sudut pusatnya 105°?",
+                options: ["36 cm", "48 cm", "30 cm", "42 cm"],
+                answer: 3, // D
+                explanation: "Panjang Busur CD = (105° / 30°) × 12 cm = 3,5 × 12 = 42 cm.",
+                svg: `
+                    <svg width="240" height="240" viewBox="0 0 240 240">
+                        <circle cx="120" cy="120" r="78" fill="none" stroke="#475569" stroke-width="2"/>
+                        <path d="M 198 120 A 78 78 0 0 0 187.5 81" fill="none" stroke="#fbbf24" stroke-width="5"/>
+                        <path d="M 120 42 A 78 78 0 0 0 44.6 140.2" fill="none" stroke="#ec4899" stroke-width="5"/>
+                        <text x="172" y="106" fill="#fbbf24" font-size="10" font-weight="bold">30°</text>
+                        <text x="72" y="95" fill="#ec4899" font-size="11" font-weight="bold">105°</text>
+                    </svg>
+                `
+            },
+            {
+                id: 18,
+                topic: "APLIKASI WIPE KACA",
+                question: "Wiper kaca belakang mobil memiliki panjang 21 cm dan menyapu sudut sebesar 120°. Berapakah luas daerah kaca yang dibersihkan wiper tersebut? (π = 22/7)",
+                options: ["462 cm²", "154 cm²", "231 cm²", "308 cm²"],
+                answer: 0, // A
+                explanation: "Luas Juring Sapuan = (120° / 360°) × (22/7) × 21² = (1/3) × 1.386 = 462 cm².",
+                svg: `
+                    <svg width="240" height="240" viewBox="0 0 240 240">
+                        <path d="M 120 175 L 185 137.5 A 75 75 0 0 0 55 137.5 Z" fill="rgba(56, 189, 248, 0.35)" stroke="#38bdf8" stroke-width="3"/>
+                        <circle cx="120" cy="175" r="5" fill="#f43f5e"/>
+                        <text x="120" y="145" fill="#ffffff" font-size="12" text-anchor="middle" font-weight="bold">120°</text>
+                        <text x="165" y="170" fill="#cbd5e1" font-size="11" font-weight="bold">r = 21 cm</text>
+                    </svg>
+                `
+            },
+            {
+                id: 19,
+                topic: "PANJANG BUSUR",
+                question: "Sebuah taman berbentuk seperempat lingkaran memiliki jari-jari 28 meter. Di tepi lengkungnya akan dipasang lampu hias. Panjang sisi lengkung taman tersebut adalah ... (π = 22/7)",
+                options: ["22 m", "44 m", "88 m", "616 m"],
+                answer: 1, // B
+                explanation: "Seperempat lingkaran bersudut 90°. Panjang Busur = (1/4) × 2 × (22/7) × 28 = 44 meter.",
+                svg: `
+                    <svg width="240" height="240" viewBox="0 0 240 240">
+                        <path d="M 65 175 L 175 175 A 110 110 0 0 0 65 65 Z" fill="rgba(168, 85, 247, 0.2)" stroke="#64748b" stroke-width="2"/>
+                        <path d="M 175 175 A 110 110 0 0 0 65 65" fill="none" stroke="#fbbf24" stroke-width="5" stroke-linecap="round"/>
+                        <text x="145" y="105" fill="#fbbf24" font-size="12" font-weight="bold">Busur (90°)</text>
+                        <text x="115" y="192" fill="#cbd5e1" font-size="11" font-weight="bold">r = 28 m</text>
+                    </svg>
+                `
+            },
+            {
+                id: 20,
+                topic: "LUAS JURING",
+                question: "Sebuah kipas lipat yang terbuka membentuk juring lingkaran bersudut 135° dengan jari-jari 14 cm. Berapakah luas permukaan kipas tersebut? (π = 22/7)",
+                options: ["154 cm²", "462 cm²", "231 cm²", "308 cm²"],
+                answer: 2, // C
+                explanation: "Luas Juring = (135° / 360°) × (22/7) × 14² = (3/8) × 616 = 3 × 77 = 231 cm².",
+                svg: `
+                    <svg width="240" height="240" viewBox="0 0 240 240">
+                        <circle cx="120" cy="135" r="78" fill="none" stroke="#334155" stroke-dasharray="3 3"/>
+                        <path d="M 120 135 L 198 135 A 78 78 0 0 0 64.8 79.8 Z" fill="rgba(244, 63, 94, 0.35)" stroke="#f43f5e" stroke-width="3"/>
+                        <circle cx="120" cy="135" r="4" fill="#ffffff"/>
+                        <text x="122" y="108" fill="#ffffff" font-size="12" font-weight="bold">135°</text>
+                        <text x="155" y="152" fill="#fecdd3" font-size="11" font-weight="bold">r = 14 cm</text>
+                    </svg>
+                `
+            }
+        ];
+
+        // Global State & Persistent Storage Keys
+        let currentIdx = 0;
+        let userAnswers = {};
+        const STORAGE_ANSWERS_KEY = 'geomaster_kls9_busur_juring_answers_v1';
+        const STORAGE_INDEX_KEY = 'geomaster_kls9_busur_juring_index_v1';
+
+        // Load Application & Restore State on Reload
+        window.addEventListener('DOMContentLoaded', () => {
+            loadSavedData();
+            renderNavGrid();
+            renderQuestion();
+        });
+
+        function loadSavedData() {
+            try {
+                const savedAnswers = localStorage.getItem(STORAGE_ANSWERS_KEY);
+                if (savedAnswers) {
+                    userAnswers = JSON.parse(savedAnswers);
+                }
+                const savedIndex = localStorage.getItem(STORAGE_INDEX_KEY);
+                if (savedIndex !== null) {
+                    const parsedIdx = parseInt(savedIndex, 10);
+                    if (!isNaN(parsedIdx) && parsedIdx >= 0 && parsedIdx < questions.length) {
+                        currentIdx = parsedIdx;
+                    }
+                }
+            } catch (e) {
+                userAnswers = {};
+                currentIdx = 0;
+            }
+        }
+
+        function saveData() {
+            try {
+                localStorage.setItem(STORAGE_ANSWERS_KEY, JSON.stringify(userAnswers));
+                localStorage.setItem(STORAGE_INDEX_KEY, currentIdx.toString());
+            } catch (e) {
+                // Ignore storage quota errors silently
+            }
+        }
+
+        // Render Sidebar Navigation Grid
+        function renderNavGrid() {
+            const grid = document.getElementById('nav-grid-buttons');
+            grid.innerHTML = '';
+
+            questions.forEach((q, idx) => {
+                const btn = document.createElement('button');
+                btn.innerText = idx + 1;
+
+                let classes = "btn-nav-num h-10 rounded-xl text-xs font-extrabold flex items-center justify-center border transition ";
+
+                if (idx === currentIdx) {
+                    classes += "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-600/30 ring-2 ring-indigo-400 ring-offset-1 ";
+                } else if (userAnswers.hasOwnProperty(idx)) {
+                    const isCorrect = userAnswers[idx] === q.answer;
+                    if (isCorrect) {
+                        classes += "bg-emerald-500 border-emerald-500 text-white ";
+                    } else {
+                        classes += "bg-rose-500 border-rose-500 text-white ";
+                    }
+                } else {
+                    classes += "bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200 ";
+                }
+
+                btn.className = classes;
+                btn.onclick = () => {
+                    currentIdx = idx;
+                    saveData();
+                    renderQuestion();
+                    renderNavGrid();
+                };
+                grid.appendChild(btn);
+            });
+
+            updateHeaderStats();
+        }
+
+        // Update Top Score, Progress Bar & Sidebar Stats
+        function updateHeaderStats() {
+            let correctCount = 0;
+            const answeredCount = Object.keys(userAnswers).length;
+
+            questions.forEach((q, idx) => {
+                if (userAnswers.hasOwnProperty(idx) && userAnswers[idx] === q.answer) {
+                    correctCount++;
+                }
+            });
+
+            const wrongCount = answeredCount - correctCount;
+
+            document.getElementById('top-score-text').innerText = `${correctCount} / 20`;
+            document.getElementById('stat-answered').innerText = `${answeredCount} / 20 Soal`;
+            document.getElementById('stat-correct').innerText = `${correctCount} Soal`;
+            document.getElementById('stat-wrong').innerText = `${wrongCount} Soal`;
+            
+            const progressPercent = Math.round((answeredCount / questions.length) * 100);
+            document.getElementById('top-progress-bar').style.width = `${progressPercent}%`;
+            document.getElementById('top-progress-percent').innerText = `${progressPercent}%`;
+
+            // Trigger Confetti if all 20 questions answered with high score
+            if (answeredCount === 20 && !window.confettiDone) {
+                window.confettiDone = true;
+                if (correctCount >= 15) {
+                    confetti({ particleCount: 120, spread: 80, origin: { y: 0.5 } });
+                }
+            }
+        }
+
+        // Render Current Question Card & SVG Diagram
+        function renderQuestion() {
+            const q = questions[currentIdx];
+            const isAnswered = userAnswers.hasOwnProperty(currentIdx);
+            const selectedOpt = userAnswers[currentIdx];
+            const optionLabels = ['A', 'B', 'C', 'D'];
+
+            // 1. Update Canvas Badge & Diagram
+            document.getElementById('canvas-badge').innerText = q.topic;
+            document.getElementById('svg-geometry-container').innerHTML = q.svg;
+
+            // 2. Update Question Header & Text
+            document.getElementById('question-no-tag').innerText = `SOAL ${currentIdx + 1} DARI 20`;
+            document.getElementById('question-text').innerText = q.question;
+            document.getElementById('bottom-counter').innerText = `${currentIdx + 1} / 20`;
+
+            // 3. Render Options
+            const optionsContainer = document.getElementById('options-container');
+            let optionsHTML = '';
+
+            q.options.forEach((opt, optIdx) => {
+                let btnClasses = "btn-option w-full text-left p-4 rounded-xl border text-sm font-semibold flex items-center justify-between shadow-xs ";
+
+                if (isAnswered) {
+                    if (optIdx === q.answer) {
+                        btnClasses += "bg-emerald-50 border-emerald-500 text-emerald-900 ring-1 ring-emerald-500 ";
+                    } else if (optIdx === selectedOpt && selectedOpt !== q.answer) {
+                        btnClasses += "bg-rose-50 border-rose-500 text-rose-900 ring-1 ring-rose-500 ";
+                    } else {
+                        btnClasses += "bg-slate-50 border-slate-200 text-slate-400 opacity-50 cursor-not-allowed ";
+                    }
+                } else {
+                    btnClasses += "bg-white border-slate-200 text-slate-700 cursor-pointer ";
+                }
+
+                optionsHTML += `
+                    <button ${isAnswered ? 'disabled' : ''} onclick="handleSelectOption(${optIdx})" class="${btnClasses}">
+                        <div class="flex items-center gap-3.5">
+                            <span class="w-8 h-8 rounded-lg border flex items-center justify-center font-bold text-xs shrink-0 ${isAnswered && optIdx === q.answer ? 'bg-emerald-500 text-white border-emerald-500' : (isAnswered && optIdx === selectedOpt ? 'bg-rose-500 text-white border-rose-500' : 'bg-slate-100 text-slate-600 border-slate-200')}">${optionLabels[optIdx]}</span>
+                            <span>${opt}</span>
+                        </div>
+                        ${isAnswered && optIdx === q.answer ? '<i class="fa-solid fa-circle-check text-emerald-600 text-lg shrink-0"></i>' : ''}
+                        ${isAnswered && optIdx === selectedOpt && selectedOpt !== q.answer ? '<i class="fa-solid fa-circle-xmark text-rose-600 text-lg shrink-0"></i>' : ''}
+                    </button>
+                `;
+            });
+
+            optionsContainer.innerHTML = optionsHTML;
+
+            // 4. Render Explanation Box if Answered
+            const expBox = document.getElementById('explanation-box');
+            if (isAnswered) {
+                const isCorrect = selectedOpt === q.answer;
+                expBox.classList.remove('hidden');
+                expBox.innerHTML = `
+                    <div class="p-4 rounded-xl border text-xs leading-relaxed ${isCorrect ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-rose-50 border-rose-200 text-rose-900'}">
+                        <div class="font-bold flex items-center gap-1.5 mb-1 text-xs uppercase tracking-wider">
+                            <i class="fa-solid ${isCorrect ? 'fa-circle-check text-emerald-600' : 'fa-circle-xmark text-rose-600'} text-sm"></i>
+                            <span>${isCorrect ? 'Benar! Jawaban Tepat' : 'Salah! Kunci Jawaban: ' + optionLabels[q.answer]}</span>
+                        </div>
+                        <p><b>Pembahasan:</b> ${q.explanation}</p>
+                    </div>
+                `;
+            } else {
+                expBox.classList.add('hidden');
+            }
+
+            // 5. Update Prev/Next Controls
+            document.getElementById('btn-prev-question').disabled = currentIdx === 0;
+            document.getElementById('btn-next-question').disabled = currentIdx === questions.length - 1;
+        }
+
+        // Option Selection Handler
+        function handleSelectOption(optIdx) {
+            if (userAnswers.hasOwnProperty(currentIdx)) return;
+
+            userAnswers[currentIdx] = optIdx;
+            saveData();
+            renderQuestion();
+            renderNavGrid();
+
+            // Check if all 20 questions have just been completed
+            if (Object.keys(userAnswers).length === questions.length) {
+                setTimeout(showFinishModal, 700);
+            }
+        }
+
+        // Navigation (Prev/Next)
+        function navigate(direction) {
+            const nextIdx = currentIdx + direction;
+            if (nextIdx >= 0 && nextIdx < questions.length) {
+                currentIdx = nextIdx;
+                saveData();
+                renderQuestion();
+                renderNavGrid();
+            }
+        }
+
+        // Modals Logic
+        function toggleHintModal() {
+            document.getElementById('hint-modal').classList.toggle('hidden');
+        }
+
+        function confirmReset() {
+            document.getElementById('reset-modal').classList.remove('hidden');
+        }
+
+        function closeResetModal() {
+            document.getElementById('reset-modal').classList.add('hidden');
+        }
+
+        function showFinishModal() {
+            let correctCount = 0;
+            questions.forEach((q, idx) => {
+                if (userAnswers[idx] === q.answer) correctCount++;
+            });
+            const finalScore = correctCount * 5;
+            document.getElementById('final-grade-text').innerText = finalScore;
+            document.getElementById('final-detail-text').innerText = `Benar ${correctCount} dari 20 soal`;
+            document.getElementById('finish-modal').classList.remove('hidden');
+        }
+
+        function closeFinishModal() {
+            document.getElementById('finish-modal').classList.add('hidden');
+        }
+
+        function executeReset() {
+            userAnswers = {};
+            currentIdx = 0;
+            localStorage.removeItem(STORAGE_ANSWERS_KEY);
+            localStorage.removeItem(STORAGE_INDEX_KEY);
+            window.confettiDone = false;
+            closeResetModal();
+            renderQuestion();
+            renderNavGrid();
+        }
+    </script>
+</body>
+</html>
